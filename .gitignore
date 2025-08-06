@@ -1,0 +1,18 @@
+# node dependencies
+node_modules/
+
+# compiled output
+dist/
+
+# env config
+.env
+
+# logs
+*.log
+
+# IDEs
+.vscode/
+.idea/
+
+# misc
+.DS_Store

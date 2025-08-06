@@ -1,0 +1,27 @@
+{
+    "name": "@harnyk/telegram-notifier-mcp",
+    "version": "0.1.0",
+    "description": "MCP server for sending Telegram messages as a bot",
+    "type": "module",
+    "main": "dist/server.js",
+    "bin": {
+        "telegram-notifier": "dist/server.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsx src/server.ts",
+        "start": "node dist/server.js",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.17.1",
+        "axios": "^1.10.0",
+        "dotenv": "^17.2.0",
+        "zod": "3.25.76"
+    },
+    "devDependencies": {
+        "@types/node": "^24.2.0",
+        "tsx": "^4.20.3",
+        "typescript": "^5.9.2"
+    }
+}
