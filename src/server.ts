@@ -85,12 +85,12 @@ const server = new McpServer({
 
 // --- Tool: Send Telegram Message ---
 registerApiTool(
-    'send_message_as_telegram_bot',
+    'send_markdown_message_as_telegram_bot',
     z.object({
         messageText: z.string(),
     }),
-    'Send Telegram Message',
-    'Send a message using Telegram bot',
+    'Send Telegram Message in Markdown format',
+    'Send a message using Telegram bot in Markdown format',
     async ({ messageText }) => {
         const chatId = process.env.TELEGRAM_CHAT_ID;
         if (!chatId) throw new Error('Missing TELEGRAM_CHAT_ID');
@@ -99,6 +99,7 @@ registerApiTool(
             await telegramPost<{ ok: boolean; result?: any }>(`/sendMessage`, {
                 chat_id: chatId,
                 text: messageText,
+                parse_mode: 'MarkdownV2',
             })
         );
 
