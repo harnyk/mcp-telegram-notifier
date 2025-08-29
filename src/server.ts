@@ -3,10 +3,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import * as dotenv from 'dotenv';
 import axios, { AxiosRequestConfig } from 'axios';
-
-dotenv.config();
+import fs from 'fs';
+import path from 'path';
 
 const TELEGRAM_API_BASE = 'https://api.telegram.org';
 
@@ -15,6 +14,21 @@ type ToolOutput = { content: [{ type: 'text'; text: string }] };
 type TelegramError = { error: { status?: number; message: string } };
 type TelegramSuccess<T> = { data: T };
 type TelegramResponse<T> = TelegramSuccess<T> | TelegramError;
+
+// --- Error formatter ---
+function normalizeError(e: unknown): string {
+    if (e instanceof Error) {
+        return e.message;
+    } else if (typeof e === 'string') {
+        return e;
+    } else {
+        try {
+            return JSON.stringify(e, null, 2);
+        } catch {
+            return String(e);
+        }
+    }
+}
 
 // --- Telegram API helpers ---
 async function telegramPost<T>(
@@ -34,17 +48,26 @@ async function telegramPost<T>(
         });
         return { data: response.data };
     } catch (error: any) {
+        const status = error.response?.status;
+        const rawMessage = error.response?.data || error.message;
+        const message =
+            typeof rawMessage === 'string'
+                ? rawMessage
+                : JSON.stringify(rawMessage, null, 2);
+
         return {
             error: {
-                status: error.response?.status,
-                message: error.response?.data || error.message,
+                status,
+                message,
             },
         };
     }
 }
 
 function getOrThrow<T>(result: TelegramResponse<T>): T {
-    if ('error' in result) throw new Error(result.error.message);
+    if ('error' in result) {
+        throw new Error(result.error.message);
+    }
     return result.data;
 }
 
@@ -65,13 +88,12 @@ function registerApiTool<Args extends z.ZodObject<any>>(
     server.registerTool(
         name,
         { title, description, inputSchema: schema.shape },
-        // @ts-ignore
         async (args: z.infer<Args>) => {
             try {
                 const result = await logic(args);
                 return format(result);
-            } catch (e: any) {
-                return format(`Unhandled error: ${e.message || e}`);
+            } catch (e) {
+                return format(`Unhandled error:\n${normalizeError(e)}`);
             }
         }
     );
@@ -83,15 +105,37 @@ const server = new McpServer({
     logLevel: 'debug',
 });
 
+const docsPath = new URL('../mdv2docs.txt', import.meta.url).pathname;
+
+const mdv2docs = fs.readFileSync(docsPath, 'utf-8');
+
+
 // --- Tool: Send Telegram Message ---
 registerApiTool(
     'send_markdown_message_as_telegram_bot',
     z.object({
-        messageText: z.string(),
+        messageText: z.string()
+            .describe(`Message text with formatting. Examples:
+HTML: <b>bold</b>, <i>italic</i>, <u>underline</u>, <s>strike</s>, <code>code</code>
+Markdown: *bold*, _italic_, \`code\`, [link](url)
+MarkdownV2: *bold*, _italic_, __underline__, ~strike~, ||spoiler||, \`code\`
+
+Prefer MarkdownV2.
+
+Read the documentation on MarkdownV2 formatting below:
+
+${mdv2docs}
+`),
+        parseMode: z
+            .enum(['Markdown', 'MarkdownV2', 'HTML'])
+            .default('MarkdownV2')
+            .describe(
+                'Message formatting mode: Markdown (legacy), MarkdownV2 (comprehensive), or HTML (tag-based)'
+            ),
     }),
     'Send Telegram Message in Markdown format',
     'Send a message using Telegram bot in Markdown format',
-    async ({ messageText }) => {
+    async ({ messageText, parseMode }) => {
         const chatId = process.env.TELEGRAM_CHAT_ID;
         if (!chatId) throw new Error('Missing TELEGRAM_CHAT_ID');
 
@@ -99,7 +143,7 @@ registerApiTool(
             await telegramPost<{ ok: boolean; result?: any }>(`/sendMessage`, {
                 chat_id: chatId,
                 text: messageText,
-                parse_mode: 'MarkdownV2',
+                parse_mode: parseMode,
             })
         );
 
