@@ -1,6 +1,6 @@
 {
     "name": "@harnyk/telegram-notifier-mcp",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "MCP server for sending Telegram messages as a bot",
     "title": "Telegram Notifier Server",
     "type": "module",
