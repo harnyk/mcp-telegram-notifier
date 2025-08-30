@@ -6,6 +6,9 @@ A Model Context Protocol (MCP) server that enables AI agents to send messages vi
 
 - 📱 Send messages to Telegram channels/chats via bot
 - 🎨 Support for multiple formatting modes (Markdown, MarkdownV2, HTML)
+- 📷 Send photos/images (local files, HTTP URLs)
+- 📁 Send documents/files with custom filenames
+- 🏷️ Caption support for media with full formatting
 
 ## Quick Start
 
@@ -76,6 +79,37 @@ Add to your MCP client configuration (e.g., Claude Desktop):
   }
 }
 ```
+
+## Available Tools
+
+Once configured, your AI agent will have access to these MCP tools:
+
+### 📝 `send_markdown_message_as_telegram_bot`
+Send formatted text messages to Telegram
+- **messageText**: Text content with Markdown/HTML formatting
+- **parseMode**: `Markdown`, `MarkdownV2`, or `HTML` (default: MarkdownV2)
+
+### 📷 `send_telegram_photo` 
+Send photos/images to Telegram
+- **photo**: Local file path or HTTP URL to image
+- **caption**: Optional image caption with formatting
+- **parseMode**: Caption formatting mode
+
+### 📁 `send_telegram_document`
+Send documents/files to Telegram  
+- **document**: Local file path or HTTP URL to document
+- **caption**: Optional document caption with formatting
+- **filename**: Custom filename override
+- **parseMode**: Caption formatting mode
+
+### Use Cases
+
+- 📊 **Monitoring**: Get alerts when system metrics exceed thresholds
+- 🚀 **Deployments**: Notifications when CI/CD pipelines complete
+- 📈 **Analytics**: Daily/weekly reports with charts and data files
+- 🔍 **Error Tracking**: Instant notifications with error screenshots  
+- 📅 **Scheduling**: Reminders with attached documents
+- 💬 **Customer Support**: Forward important messages with media
 
 ## Development
 
