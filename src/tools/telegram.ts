@@ -31,6 +31,19 @@ interface TelegramConfig {
   chatId: string;
 }
 
+interface TelegramError {
+  response?: {
+    data?: unknown;
+  };
+  message: string;
+}
+
+function handleTelegramError(error: TelegramError, operation: string): never {
+  const errorMessage = `Failed to ${operation}: ${error.message}`;
+  const responseData = error.response?.data ? `\nResponse: ${JSON.stringify(error.response.data)}` : '';
+  throw new Error(errorMessage + responseData);
+}
+
 async function isUrl(str: string): Promise<boolean> {
   try {
     new URL(str);
@@ -66,20 +79,24 @@ export function registerTelegramTool(server: McpServer, config: TelegramConfig) 
     },
     async ({ messageText, parseMode = 'MarkdownV2' }) => {
       const url = `${TELEGRAM_API_BASE}/bot${config.token}/sendMessage`;
-      await axios.post(url, {
-        chat_id: config.chatId,
-        text: messageText,
-        parse_mode: parseMode,
-      });
+      try {
+        await axios.post(url, {
+          chat_id: config.chatId,
+          text: messageText,
+          parse_mode: parseMode,
+        });
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: 'Message sent successfully',
-          },
-        ],
-      };
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Message sent successfully',
+            },
+          ],
+        };
+      } catch (error) {
+        handleTelegramError(error as TelegramError, 'send message');
+      }
     }
   );
 
@@ -102,39 +119,46 @@ export function registerTelegramTool(server: McpServer, config: TelegramConfig) 
     async ({ photo, caption, parseMode }) => {
       const url = `${TELEGRAM_API_BASE}/bot${config.token}/sendPhoto`;
 
-      if (await isUrl(photo)) {
-        // Send photo by URL
-        await axios.post(url, {
-          chat_id: config.chatId,
-          photo: photo,
-          caption: caption,
-          parse_mode: parseMode,
-        });
-      } else if (await fileExists(photo)) {
-        // Send local file using multipart/form-data
-        const form = new FormData();
-        form.append('chat_id', config.chatId);
-        form.append('photo', fs.createReadStream(photo));
-        if (caption) {
-          form.append('caption', caption);
-          form.append('parse_mode', parseMode || 'MarkdownV2');
+      try {
+        if (await isUrl(photo)) {
+          // Send photo by URL
+          await axios.post(url, {
+            chat_id: config.chatId,
+            photo: photo,
+            caption: caption,
+            parse_mode: parseMode,
+          });
+        } else if (await fileExists(photo)) {
+          // Send local file using multipart/form-data
+          const form = new FormData();
+          form.append('chat_id', config.chatId);
+          form.append('photo', fs.createReadStream(photo));
+          if (caption) {
+            form.append('caption', caption);
+            form.append('parse_mode', parseMode || 'MarkdownV2');
+          }
+
+          await axios.post(url, form, {
+            headers: form.getHeaders(),
+          });
+        } else {
+          throw new Error(`Photo not found: ${photo}. Provide a valid file path, HTTP URL, or base64 data.`);
         }
 
-        await axios.post(url, form, {
-          headers: form.getHeaders(),
-        });
-      } else {
-        throw new Error(`Photo not found: ${photo}. Provide a valid file path, HTTP URL, or base64 data.`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Photo sent successfully',
+            },
+          ],
+        };
+      } catch (error) {
+        if ((error as Error).message.includes('Photo not found')) {
+          throw error;
+        }
+        handleTelegramError(error as TelegramError, 'send photo');
       }
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: 'Photo sent successfully',
-          },
-        ],
-      };
     }
   );
 
@@ -158,45 +182,121 @@ export function registerTelegramTool(server: McpServer, config: TelegramConfig) 
     async ({ document, caption, filename, parseMode }) => {
       const url = `${TELEGRAM_API_BASE}/bot${config.token}/sendDocument`;
 
-      if (await isUrl(document)) {
-        // Send document by URL
-        await axios.post(url, {
-          chat_id: config.chatId,
-          document: document,
-          caption: caption,
-          parse_mode: parseMode,
-        });
-      } else if (await fileExists(document)) {
-        // Send local file using multipart/form-data
-        const form = new FormData();
-        form.append('chat_id', config.chatId);
-        
-        if (filename) {
-          form.append('document', fs.createReadStream(document), filename);
+      try {
+        if (await isUrl(document)) {
+          // Send document by URL
+          await axios.post(url, {
+            chat_id: config.chatId,
+            document: document,
+            caption: caption,
+            parse_mode: parseMode,
+          });
+        } else if (await fileExists(document)) {
+          // Send local file using multipart/form-data
+          const form = new FormData();
+          form.append('chat_id', config.chatId);
+          
+          if (filename) {
+            form.append('document', fs.createReadStream(document), filename);
+          } else {
+            form.append('document', fs.createReadStream(document));
+          }
+          
+          if (caption) {
+            form.append('caption', caption);
+            form.append('parse_mode', parseMode || 'MarkdownV2');
+          }
+
+          await axios.post(url, form, {
+            headers: form.getHeaders(),
+          });
         } else {
-          form.append('document', fs.createReadStream(document));
-        }
-        
-        if (caption) {
-          form.append('caption', caption);
-          form.append('parse_mode', parseMode || 'MarkdownV2');
+          throw new Error(`Document not found: ${document}. Provide a valid file path or HTTP URL.`);
         }
 
-        await axios.post(url, form, {
-          headers: form.getHeaders(),
-        });
-      } else {
-        throw new Error(`Document not found: ${document}. Provide a valid file path or HTTP URL.`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Document sent successfully',
+            },
+          ],
+        };
+      } catch (error) {
+        if ((error as Error).message.includes('Document not found')) {
+          throw error;
+        }
+        handleTelegramError(error as TelegramError, 'send document');
       }
+    }
+  );
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: 'Document sent successfully',
-          },
-        ],
-      };
+  // Video upload tool
+  server.registerTool(
+    'send_telegram_video',
+    {
+      title: 'Send Telegram Video',
+      description: 'Send a video via Telegram bot',
+      inputSchema: {
+        video: z.string().describe('File path or HTTP URL to the video'),
+        caption: z.string().optional().describe('Video caption with formatting support'),
+        filename: z.string().optional().describe('Custom filename for the video'),
+        parseMode: z
+          .enum(['Markdown', 'MarkdownV2', 'HTML'])
+          .default('MarkdownV2')
+          .optional()
+          .describe('Caption formatting mode'),
+      },
+    },
+    async ({ video, caption, filename, parseMode }) => {
+      const url = `${TELEGRAM_API_BASE}/bot${config.token}/sendVideo`;
+
+      try {
+        if (await isUrl(video)) {
+          // Send video by URL
+          await axios.post(url, {
+            chat_id: config.chatId,
+            video: video,
+            caption: caption,
+            parse_mode: parseMode,
+          });
+        } else if (await fileExists(video)) {
+          // Send local file using multipart/form-data
+          const form = new FormData();
+          form.append('chat_id', config.chatId);
+          
+          if (filename) {
+            form.append('video', fs.createReadStream(video), filename);
+          } else {
+            form.append('video', fs.createReadStream(video));
+          }
+          
+          if (caption) {
+            form.append('caption', caption);
+            form.append('parse_mode', parseMode || 'MarkdownV2');
+          }
+
+          await axios.post(url, form, {
+            headers: form.getHeaders(),
+          });
+        } else {
+          throw new Error(`Video not found: ${video}. Provide a valid file path or HTTP URL.`);
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Video sent successfully',
+            },
+          ],
+        };
+      } catch (error) {
+        if ((error as Error).message.includes('Video not found')) {
+          throw error;
+        }
+        handleTelegramError(error as TelegramError, 'send video');
+      }
     }
   );
 }
