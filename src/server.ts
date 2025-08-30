@@ -3,7 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import axios, { AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import fs from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -11,91 +11,18 @@ import { dirname, join } from 'node:path';
 
 const TELEGRAM_API_BASE = 'https://api.telegram.org';
 
-// --- Shared Types ---
-type ToolOutput = { content: [{ type: 'text'; text: string }] };
-type TelegramError = { error: { status?: number; message: string } };
-type TelegramSuccess<T> = { data: T };
-type TelegramResponse<T> = TelegramSuccess<T> | TelegramError;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const docsPath = join(__dirname, '../llm-texts/MarkdownV2Documentation.txt');
+const mdv2docs = fs.readFileSync(docsPath, 'utf-8');
 
-// --- Error formatter ---
-function normalizeError(e: unknown): string {
-    if (e instanceof Error) {
-        return e.message;
-    } else if (typeof e === 'string') {
-        return e;
-    } else {
-        try {
-            return JSON.stringify(e, null, 2);
-        } catch {
-            return String(e);
-        }
-    }
-}
-
-// --- Telegram API helpers ---
-async function telegramPost<T>(
-    path: string,
-    data: unknown,
-    config: AxiosRequestConfig = {}
-): Promise<TelegramResponse<T>> {
-    try {
-        const token = process.env.TELEGRAM_BOT_TOKEN;
-        if (!token) throw new Error('Missing TELEGRAM_BOT_TOKEN');
-        const url = `${TELEGRAM_API_BASE}/bot${token}${path}`;
-        const response = await axios.post<T>(url, data, {
-            headers: {
-                ...config.headers,
-            },
-            responseType: config.responseType || 'json',
-        });
-        return { data: response.data };
-    } catch (error: unknown) {
-        const isAxiosError = error && typeof error === 'object' && 'response' in error;
-        const status = isAxiosError ? (error as { response: { status: number } }).response?.status : undefined;
-        const rawMessage = isAxiosError 
-            ? (error as { response: { data?: unknown } }).response?.data || (error as unknown as Error).message
-            : (error as Error).message;
-        const message =
-            typeof rawMessage === 'string'
-                ? rawMessage
-                : JSON.stringify(rawMessage, null, 2);
-
-        return {
-            error: {
-                status,
-                message,
-            },
-        };
-    }
-}
-
-function format(data: unknown): ToolOutput {
-    const text =
-        typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-    return { content: [{ type: 'text', text }] };
-}
-
-// --- Tool registration helper ---
-function registerApiTool<Args extends z.ZodObject<z.ZodRawShape>>(
-    name: string,
-    schema: Args,
-    title: string,
-    description: string,
-    logic: (args: z.infer<Args>) => Promise<unknown>
-) {
-    server.registerTool(
-        name,
-        { title, description, inputSchema: schema.shape },
-        async (args: z.infer<Args>) => {
-            try {
-                const result = await logic(args);
-                return format(result);
-            } catch (e) {
-                return format(`Unhandled error:\n${normalizeError(e)}`);
-            }
-        }
-    );
-}
+const TEXT_FORMATTING_REFERENCE = `Message text with formatting. Examples:
+HTML: <b>bold</b>, <i>italic</i>, <u>underline</u>, <s>strike</s>, <code>code</code>
+Markdown: *bold*, _italic_, \`code\`, [link](url)
+MarkdownV2: *bold*, _italic_, __underline__, ~strike~, ||spoiler||, \`code\`
+Prefer MarkdownV2.
+Read the documentation on MarkdownV2 formatting below:
+${mdv2docs}`;
 
 const server = new McpServer({
     name: 'telegram-notifier',
@@ -103,55 +30,47 @@ const server = new McpServer({
     logLevel: 'debug',
 });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const docsPath = join(__dirname, '../mdv2docs.txt');
-
-const mdv2docs = fs.readFileSync(docsPath, 'utf-8');
-
 // --- Tool: Send Telegram Message ---
-registerApiTool(
+const messageSchema = z.object({
+    messageText: z.string().describe(TEXT_FORMATTING_REFERENCE),
+    parseMode: z
+        .enum(['Markdown', 'MarkdownV2', 'HTML'])
+        .default('MarkdownV2')
+        .describe(
+            'Message formatting mode: Markdown (legacy), MarkdownV2 (comprehensive), or HTML (tag-based)'
+        ),
+});
+
+server.registerTool(
     'send_markdown_message_as_telegram_bot',
-    z.object({
-        messageText: z.string()
-            .describe(`Message text with formatting. Examples:
-HTML: <b>bold</b>, <i>italic</i>, <u>underline</u>, <s>strike</s>, <code>code</code>
-Markdown: *bold*, _italic_, \`code\`, [link](url)
-MarkdownV2: *bold*, _italic_, __underline__, ~strike~, ||spoiler||, \`code\`
+    {
+        title: 'Send Telegram Message in Markdown format',
+        description: 'Send a message using Telegram bot in Markdown format',
+        inputSchema: messageSchema.shape,
+    },
+    async (args) => {
+        const { messageText, parseMode } = messageSchema.parse(args);
+        const token = process.env.TELEGRAM_BOT_TOKEN;
+        if (!token) throw new Error('Missing TELEGRAM_BOT_TOKEN');
 
-Prefer MarkdownV2.
-
-Read the documentation on MarkdownV2 formatting below:
-
-${mdv2docs}
-`),
-        parseMode: z
-            .enum(['Markdown', 'MarkdownV2', 'HTML'])
-            .default('MarkdownV2')
-            .describe(
-                'Message formatting mode: Markdown (legacy), MarkdownV2 (comprehensive), or HTML (tag-based)'
-            ),
-    }),
-    'Send Telegram Message in Markdown format',
-    'Send a message using Telegram bot in Markdown format',
-    async ({ messageText, parseMode }) => {
         const chatId = process.env.TELEGRAM_CHAT_ID;
         if (!chatId) throw new Error('Missing TELEGRAM_CHAT_ID');
 
-        const response = await telegramPost<{
-            ok: boolean;
-            result?: unknown;
-        }>(`/sendMessage`, {
+        const url = `${TELEGRAM_API_BASE}/bot${token}/sendMessage`;
+        await axios.post(url, {
             chat_id: chatId,
             text: messageText,
             parse_mode: parseMode,
         });
 
-        if ('error' in response) {
-            throw new Error(response.error.message);
-        }
-
-        return 'Message sent successfully';
+        return {
+            content: [
+                {
+                    type: 'text',
+                    text: 'Message sent successfully',
+                },
+            ],
+        };
     }
 );
 
