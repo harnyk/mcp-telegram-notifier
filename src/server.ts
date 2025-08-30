@@ -4,8 +4,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import axios, { AxiosRequestConfig } from 'axios';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import process from 'node:process';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 const TELEGRAM_API_BASE = 'https://api.telegram.org';
 
@@ -47,9 +49,12 @@ async function telegramPost<T>(
             responseType: config.responseType || 'json',
         });
         return { data: response.data };
-    } catch (error: any) {
-        const status = error.response?.status;
-        const rawMessage = error.response?.data || error.message;
+    } catch (error: unknown) {
+        const isAxiosError = error && typeof error === 'object' && 'response' in error;
+        const status = isAxiosError ? (error as { response: { status: number } }).response?.status : undefined;
+        const rawMessage = isAxiosError 
+            ? (error as { response: { data?: unknown } }).response?.data || (error as unknown as Error).message
+            : (error as Error).message;
         const message =
             typeof rawMessage === 'string'
                 ? rawMessage
@@ -64,13 +69,6 @@ async function telegramPost<T>(
     }
 }
 
-function getOrThrow<T>(result: TelegramResponse<T>): T {
-    if ('error' in result) {
-        throw new Error(result.error.message);
-    }
-    return result.data;
-}
-
 function format(data: unknown): ToolOutput {
     const text =
         typeof data === 'string' ? data : JSON.stringify(data, null, 2);
@@ -78,7 +76,7 @@ function format(data: unknown): ToolOutput {
 }
 
 // --- Tool registration helper ---
-function registerApiTool<Args extends z.ZodObject<any>>(
+function registerApiTool<Args extends z.ZodObject<z.ZodRawShape>>(
     name: string,
     schema: Args,
     title: string,
@@ -105,10 +103,11 @@ const server = new McpServer({
     logLevel: 'debug',
 });
 
-const docsPath = new URL('../mdv2docs.txt', import.meta.url).pathname;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const docsPath = join(__dirname, '../mdv2docs.txt');
 
 const mdv2docs = fs.readFileSync(docsPath, 'utf-8');
-
 
 // --- Tool: Send Telegram Message ---
 registerApiTool(
@@ -139,19 +138,20 @@ ${mdv2docs}
         const chatId = process.env.TELEGRAM_CHAT_ID;
         if (!chatId) throw new Error('Missing TELEGRAM_CHAT_ID');
 
-        const response = getOrThrow(
-            await telegramPost<{ ok: boolean; result?: any }>(`/sendMessage`, {
-                chat_id: chatId,
-                text: messageText,
-                parse_mode: parseMode,
-            })
-        );
+        const response = await telegramPost<{
+            ok: boolean;
+            result?: unknown;
+        }>(`/sendMessage`, {
+            chat_id: chatId,
+            text: messageText,
+            parse_mode: parseMode,
+        });
 
-        if (!response.ok) {
-            throw new Error(`Telegram API returned ok=false`);
+        if ('error' in response) {
+            throw new Error(response.error.message);
         }
 
-        return 'Message sent successfully ✅';
+        return 'Message sent successfully';
     }
 );
 

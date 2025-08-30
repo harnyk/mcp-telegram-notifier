@@ -11,7 +11,9 @@
         "build": "tsc",
         "dev": "tsx src/server.ts",
         "start": "node dist/server.js",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "lint": "eslint src/**/*.ts",
+        "lint:fix": "eslint src/**/*.ts --fix"
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.17.1",
@@ -20,7 +22,12 @@
         "zod": "3.25.76"
     },
     "devDependencies": {
+        "@eslint/js": "^9.34.0",
         "@types/node": "^24.2.0",
+        "@typescript-eslint/eslint-plugin": "^8.41.0",
+        "@typescript-eslint/parser": "^8.41.0",
+        "eslint": "^9.34.0",
+        "eslint-plugin-n": "^17.21.3",
         "tsx": "^4.20.3",
         "typescript": "^5.9.2"
     }
