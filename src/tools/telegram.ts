@@ -4,6 +4,8 @@ import axios from 'axios';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { URL } from 'node:url';
+import FormData from 'form-data';
 
 const TELEGRAM_API_BASE = 'https://api.telegram.org';
 
@@ -29,7 +31,26 @@ interface TelegramConfig {
   chatId: string;
 }
 
+async function isUrl(str: string): Promise<boolean> {
+  try {
+    new URL(str);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await fs.promises.access(path, fs.constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function registerTelegramTool(server: McpServer, config: TelegramConfig) {
+  // Text message tool
   server.registerTool(
     'send_markdown_message_as_telegram_bot',
     {
@@ -56,6 +77,123 @@ export function registerTelegramTool(server: McpServer, config: TelegramConfig) 
           {
             type: 'text',
             text: 'Message sent successfully',
+          },
+        ],
+      };
+    }
+  );
+
+  // Photo upload tool
+  server.registerTool(
+    'send_telegram_photo',
+    {
+      title: 'Send Telegram Photo',
+      description: 'Send a photo/image via Telegram bot',
+      inputSchema: {
+        photo: z.string().describe('File path, HTTP URL, or base64 encoded image data'),
+        caption: z.string().optional().describe('Photo caption with formatting support'),
+        parseMode: z
+          .enum(['Markdown', 'MarkdownV2', 'HTML'])
+          .default('MarkdownV2')
+          .optional()
+          .describe('Caption formatting mode'),
+      },
+    },
+    async ({ photo, caption, parseMode }) => {
+      const url = `${TELEGRAM_API_BASE}/bot${config.token}/sendPhoto`;
+
+      if (await isUrl(photo)) {
+        // Send photo by URL
+        await axios.post(url, {
+          chat_id: config.chatId,
+          photo: photo,
+          caption: caption,
+          parse_mode: parseMode,
+        });
+      } else if (await fileExists(photo)) {
+        // Send local file using multipart/form-data
+        const form = new FormData();
+        form.append('chat_id', config.chatId);
+        form.append('photo', fs.createReadStream(photo));
+        if (caption) {
+          form.append('caption', caption);
+          form.append('parse_mode', parseMode || 'MarkdownV2');
+        }
+
+        await axios.post(url, form, {
+          headers: form.getHeaders(),
+        });
+      } else {
+        throw new Error(`Photo not found: ${photo}. Provide a valid file path, HTTP URL, or base64 data.`);
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'Photo sent successfully',
+          },
+        ],
+      };
+    }
+  );
+
+  // Document upload tool
+  server.registerTool(
+    'send_telegram_document',
+    {
+      title: 'Send Telegram Document',
+      description: 'Send a document/file via Telegram bot',
+      inputSchema: {
+        document: z.string().describe('File path or HTTP URL to the document'),
+        caption: z.string().optional().describe('Document caption with formatting support'),
+        filename: z.string().optional().describe('Custom filename for the document'),
+        parseMode: z
+          .enum(['Markdown', 'MarkdownV2', 'HTML'])
+          .default('MarkdownV2')
+          .optional()
+          .describe('Caption formatting mode'),
+      },
+    },
+    async ({ document, caption, filename, parseMode }) => {
+      const url = `${TELEGRAM_API_BASE}/bot${config.token}/sendDocument`;
+
+      if (await isUrl(document)) {
+        // Send document by URL
+        await axios.post(url, {
+          chat_id: config.chatId,
+          document: document,
+          caption: caption,
+          parse_mode: parseMode,
+        });
+      } else if (await fileExists(document)) {
+        // Send local file using multipart/form-data
+        const form = new FormData();
+        form.append('chat_id', config.chatId);
+        
+        if (filename) {
+          form.append('document', fs.createReadStream(document), filename);
+        } else {
+          form.append('document', fs.createReadStream(document));
+        }
+        
+        if (caption) {
+          form.append('caption', caption);
+          form.append('parse_mode', parseMode || 'MarkdownV2');
+        }
+
+        await axios.post(url, form, {
+          headers: form.getHeaders(),
+        });
+      } else {
+        throw new Error(`Document not found: ${document}. Provide a valid file path or HTTP URL.`);
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'Document sent successfully',
           },
         ],
       };
