@@ -2,6 +2,7 @@
     "name": "@harnyk/telegram-notifier-mcp",
     "version": "0.1.0",
     "description": "MCP server for sending Telegram messages as a bot",
+    "title": "Telegram Notifier Server",
     "type": "module",
     "main": "dist/server.js",
     "bin": {
@@ -14,7 +15,8 @@
         "start": "node dist/server.js",
         "typecheck": "tsc --noEmit",
         "lint": "eslint src/**/*.ts",
-        "lint:fix": "eslint src/**/*.ts --fix"
+        "lint:fix": "eslint src/**/*.ts --fix",
+        "prepare": "npm run build"
     },
     "files": [
         "dist",
@@ -30,7 +32,7 @@
     },
     "devDependencies": {
         "@eslint/js": "^9.34.0",
-        "@types/node": "^24.2.0",
+        "@types/node": "^22.7.4",
         "@typescript-eslint/eslint-plugin": "^8.41.0",
         "@typescript-eslint/parser": "^8.41.0",
         "eslint": "^9.34.0",
