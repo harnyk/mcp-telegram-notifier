@@ -2,7 +2,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import axios from 'axios';
 import fs from 'node:fs';
-import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -25,7 +24,12 @@ Read the documentation on MarkdownV2 formatting below:
 
 ${mdv2docs}`;
 
-export function registerTelegramTool(server: McpServer) {
+interface TelegramConfig {
+  token: string;
+  chatId: string;
+}
+
+export function registerTelegramTool(server: McpServer, config: TelegramConfig) {
   server.registerTool(
     'send_markdown_message_as_telegram_bot',
     {
@@ -40,15 +44,9 @@ export function registerTelegramTool(server: McpServer) {
       },
     },
     async ({ messageText, parseMode = 'MarkdownV2' }) => {
-      const token = process.env.TELEGRAM_BOT_TOKEN;
-      if (!token) throw new Error('Missing TELEGRAM_BOT_TOKEN');
-
-      const chatId = process.env.TELEGRAM_CHAT_ID;
-      if (!chatId) throw new Error('Missing TELEGRAM_CHAT_ID');
-
-      const url = `${TELEGRAM_API_BASE}/bot${token}/sendMessage`;
+      const url = `${TELEGRAM_API_BASE}/bot${config.token}/sendMessage`;
       await axios.post(url, {
-        chat_id: chatId,
+        chat_id: config.chatId,
         text: messageText,
         parse_mode: parseMode,
       });
