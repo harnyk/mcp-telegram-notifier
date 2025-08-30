@@ -9,6 +9,7 @@
     },
     "scripts": {
         "build": "tsc",
+        "watch": "tsc -w",
         "dev": "tsx src/server.ts",
         "start": "node dist/server.js",
         "typecheck": "tsc --noEmit",
