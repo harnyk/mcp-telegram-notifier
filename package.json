@@ -1,6 +1,6 @@
 {
     "name": "@harnyk/telegram-notifier-mcp",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "description": "A Model Context Protocol (MCP) server that enables AI agents to send messages, photos, documents, and videos via Telegram bot",
     "title": "Telegram Notifier MCP Server",
     "type": "module",
