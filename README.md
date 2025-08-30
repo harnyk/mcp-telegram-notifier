@@ -8,7 +8,10 @@ A Model Context Protocol (MCP) server that enables AI agents to send messages vi
 - 🎨 Support for multiple formatting modes (Markdown, MarkdownV2, HTML)
 - 📷 Send photos/images (local files, HTTP URLs)
 - 📁 Send documents/files with custom filenames
-- 🏷️ Caption support for media with full formatting
+- 🎬 Send videos with caption support
+- 🏷️ Caption support for all media with full formatting
+- 🛡️ Robust error handling with detailed Telegram API responses
+- 🏗️ Clean service architecture for maintainable code
 
 ## Quick Start
 
@@ -99,6 +102,13 @@ Send photos/images to Telegram
 Send documents/files to Telegram  
 - **document**: Local file path or HTTP URL to document
 - **caption**: Optional document caption with formatting
+- **filename**: Custom filename override
+- **parseMode**: Caption formatting mode
+
+### 🎬 `send_telegram_video`
+Send videos to Telegram
+- **video**: Local file path or HTTP URL to video
+- **caption**: Optional video caption with formatting
 - **filename**: Custom filename override
 - **parseMode**: Caption formatting mode
 

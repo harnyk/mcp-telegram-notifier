@@ -1,13 +1,36 @@
 {
     "name": "@harnyk/telegram-notifier-mcp",
     "version": "0.1.5",
-    "description": "MCP server for sending Telegram messages as a bot",
-    "title": "Telegram Notifier Server",
+    "description": "A Model Context Protocol (MCP) server that enables AI agents to send messages, photos, documents, and videos via Telegram bot",
+    "title": "Telegram Notifier MCP Server",
     "type": "module",
     "main": "dist/server.js",
     "bin": {
         "telegram-notifier": "dist/server.js"
     },
+    "keywords": [
+        "mcp",
+        "model-context-protocol",
+        "telegram",
+        "bot",
+        "notifications",
+        "ai",
+        "claude",
+        "llm"
+    ],
+    "author": {
+        "name": "Mark Harnyk",
+        "email": "markharnyk@gmail.com"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/harnyk/mcp-telegram-notifier.git"
+    },
+    "bugs": {
+        "url": "https://github.com/harnyk/mcp-telegram-notifier/issues"
+    },
+    "homepage": "https://github.com/harnyk/mcp-telegram-notifier#readme",
+    "license": "WTFPL",
     "scripts": {
         "build": "tsc",
         "watch": "tsc -w",
@@ -25,6 +48,9 @@
         "README.md",
         "llm-texts"
     ],
+    "engines": {
+        "node": ">=18.0.0"
+    },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.17.1",
         "axios": "^1.10.0",
