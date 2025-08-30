@@ -1,5 +1,15 @@
 # Telegram Notifier MCP Server
 
+[![npm version](https://badge.fury.io/js/%40harnyk%2Ftelegram-notifier-mcp.svg)](https://badge.fury.io/js/%40harnyk%2Ftelegram-notifier-mcp)
+[![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg)](http://www.wtfpl.net/about/)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![ESLint](https://img.shields.io/badge/ESLint-4B32C3?logo=eslint&logoColor=white)](https://eslint.org/)
+[![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-blue)](https://modelcontextprotocol.io/)
+[![Telegram Bot API](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
+[![pnpm](https://img.shields.io/badge/pnpm-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![npm downloads](https://img.shields.io/npm/dm/@harnyk/telegram-notifier-mcp)](https://www.npmjs.com/package/@harnyk/telegram-notifier-mcp)
+
 A Model Context Protocol (MCP) server that enables AI agents to send messages via Telegram bot. Perfect for notifications, alerts, and real-time communication from your AI applications.
 
 ## Features
