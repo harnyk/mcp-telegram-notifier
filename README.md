@@ -157,8 +157,7 @@ pnpm typecheck
 {
   "mcpServers": {
     "telegram-notifier": {
-      "command": "node",
-      "args": ["telegram-notifier"],
+      "command": "telegram-notifier",
       "env": {
         "TELEGRAM_BOT_TOKEN": "123456789:ABCdefGHIjklMNOpqrsTUVwxyz",
         "TELEGRAM_CHAT_ID": "-1001234567890"
