@@ -65,8 +65,7 @@ Add to your MCP client configuration (e.g., Claude Desktop):
 {
   "mcpServers": {
     "telegram-notifier": {
-      "command": "node",
-      "args": ["/path/to/mcp-telegram-notifier/dist/server.js"],
+      "command": "telegram-notifier",
       "env": {
         "TELEGRAM_BOT_TOKEN": "your_bot_token_here",
         "TELEGRAM_CHAT_ID": "your_chat_id_here"
@@ -159,7 +158,7 @@ pnpm typecheck
   "mcpServers": {
     "telegram-notifier": {
       "command": "node",
-      "args": ["path/to/dist/server.js"],
+      "args": ["telegram-notifier"],
       "env": {
         "TELEGRAM_BOT_TOKEN": "123456789:ABCdefGHIjklMNOpqrsTUVwxyz",
         "TELEGRAM_CHAT_ID": "-1001234567890"
